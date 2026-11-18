@@ -1,0 +1,17 @@
+<div class="color-options" role="group" aria-label="Cores disponíveis">
+  <button
+    *ngFor="let color of coresDisponiveis"
+    type="button"
+    class="color-option"
+    [class.selected]="selectedColorId === color.id"
+    [style.--color-swatch]="color.cor || '#f1f3f5'"
+    [attr.aria-pressed]="selectedColorId === color.id"
+    [disabled]="disabled"
+    (click)="sendSelectedColor(color.id)">
+    <span class="color-box" aria-hidden="true"></span>
+    <span class="color-label">{{ color.descricao || color.tipo }}</span>
+  </button>
+  <span *ngIf="coresDisponiveis.length === 0" class="no-colors">
+    Nenhuma cor disponível
+  </span>
+</div>

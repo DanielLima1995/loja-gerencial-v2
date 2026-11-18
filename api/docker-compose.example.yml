@@ -1,0 +1,22 @@
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: loja-rabbitmq
+    hostname: loja-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: TEST_USER
+      RABBITMQ_DEFAULT_PASS: TEST_PASSWORD
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rabbitmq_data:

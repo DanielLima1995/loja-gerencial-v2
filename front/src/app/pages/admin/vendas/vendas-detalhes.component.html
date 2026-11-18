@@ -1,0 +1,117 @@
+<ng-container *ngIf="carregando">
+  <app-carregamento></app-carregamento>
+</ng-container>
+<div class="bg-default" [ngClass]="{
+  'd-none': carregando
+}">
+  <div class="card p-4">
+    <div class="card-title">
+      <h4>Detalhamento {{isCliente ? 'do Pedido' : 'da Venda'}}</h4>
+    </div>
+    <div class="card-body">
+      <div class="conteudo bg-white" *ngIf="venda">
+          <div class="row">
+            <div class="col-12 col-lg-6">
+              <label for="cliente" class="bold">
+                Cliente
+              </label>
+              <div class="cliente">
+                {{venda.usuarioId ?? venda.clienteId ?? 'Não informado'}}
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <label for="data" class="bold">
+                Data
+              </label>
+              <div class="data">
+                {{venda.dataCompra | date: 'dd/MM HH:mm'}}
+              </div>
+            </div>
+            <div class="col-6 col-lg-3">
+              <label for="data" class="bold">
+                Pagamento
+              </label>
+              <div class="data">
+                {{venda.formaPagamento}}
+              </div>
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="col-6">
+              <label for="status" class="bold">
+                Status do Pedido
+              </label>
+              <div class="status">
+                {{venda.status}}
+              </div>
+            </div>
+            <div class="col-3">
+              <label for="qtd" class="bold">
+                Quantidade
+              </label>
+              <div class="qtd">
+                {{venda.quantidadeTotal}}
+              </div>
+            </div>
+            <div class="col-12 col-lg-3">
+              <label for="valor" class="bold">
+                Valor
+              </label>
+              <div class="valor">
+                {{globalFunctions.valorConvertido(venda.valorFinal)}}
+              </div>
+            </div>
+          </div>
+          <div class="row mt-2">
+            <ng-container *ngFor="let vendaProduto of venda.produtos; let index = index;">
+
+              <div class="col-12">
+                <div class="card produto-venda-card">
+                  <div class="card-body d-flex align-items-center gap-3">
+                    <img
+                      *ngIf="vendaProduto.produto?.imagens?.[0]?.imagemUrl"
+                      class="produto-venda-imagem"
+                      [src]="vendaProduto.produto?.imagens?.[0]?.imagemUrl"
+                      [alt]="vendaProduto.produto?.titulo ?? 'Produto do pedido'" />
+                    <div class="w-100">
+                      <h5>{{vendaProduto.produto?.titulo ?? 'Produto #' + vendaProduto.produtoId}}</h5>
+                      <p class="text-muted mb-3" *ngIf="vendaProduto.produto?.descricaoBasica">
+                        {{vendaProduto.produto?.descricaoBasica}}
+                      </p>
+                      <div class="produto-venda-dados">
+                        <div>
+                          <label class="bold">Valor unitário</label>
+                          <p>{{globalFunctions.valorConvertido(vendaProduto.valorUnitario)}}</p>
+                        </div>
+                        <div>
+                          <label class="bold">Quantidade</label>
+                          <p>{{vendaProduto.quantidade}}</p>
+                        </div>
+                        <div>
+                          <label class="bold">Tamanho</label>
+                          <p>{{vendaProduto.tamanho || '—'}}</p>
+                        </div>
+                        <div>
+                          <label class="bold">Cor</label>
+                          <p>{{vendaProduto.cor || '—'}}</p>
+                        </div>
+                        <div>
+                          <label class="bold">Gênero</label>
+                          <p>{{vendaProduto.genero || '—'}}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <hr *ngIf="(index + 1) < venda.produtos.length" />
+            </div>
+            </ng-container>
+          </div>
+          
+      </div>
+    </div>
+    
+  </div>
+  
+  
+</div>
