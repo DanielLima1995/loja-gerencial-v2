@@ -9,3 +9,4 @@ session-state/
 .env
 **/.env
 .vs
+appsettings.json
