@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Loja.API/Dockerfile
+    container_name: loja-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "${DB_CONNECTION_STRING:-Server=host.docker.internal;Port=3306;Database=loja;Uid=root;Pwd=;}"
+      RabbitMQ__Host: host.docker.internal
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: loja
+      RabbitMQ__Password: loja_dev_password
+      JwtSettings__SecretKey: "${JWT_SECRET_KEY:-loja-docker-dev-signing-key-change-before-production-2026}"
+      Cors__AllowedOrigins__0: http://localhost:4200
+    ports:
+      - "5161:8080"
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    container_name: loja-front
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - api

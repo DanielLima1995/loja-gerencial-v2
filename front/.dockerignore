@@ -1,0 +1,7 @@
+node_modules
+dist
+.angular
+.certs
+.git
+.vscode
+src/environments/environment.ts

@@ -10,4 +10,5 @@ session-state/
 **/.env
 .vs
 appsettings.json
+appsettings.Development.json
 docker-compose.yml

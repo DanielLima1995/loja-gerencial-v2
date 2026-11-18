@@ -1,4 +1,4 @@
-@Loja.API_HostAddress = http://localhost:5161
+@Loja.API_HostAddress = http://localhost:5200
 
 GET {{Loja.API_HostAddress}}/openapi/v1.json
 Accept: application/json

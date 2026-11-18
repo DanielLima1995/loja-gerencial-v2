@@ -5,18 +5,28 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://localhost:5161",
+      "applicationUrl": "http://localhost:5200",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "JwtSettings__SecretKey": "loja-local-debug-signing-key-change-before-production-2026",
+        "RabbitMQ__Host": "localhost",
+        "RabbitMQ__Port": "5672",
+        "RabbitMQ__Username": "loja",
+        "RabbitMQ__Password": "loja_dev_password"
       }
     },
     "https": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "https://localhost:7100;http://localhost:5161",
+      "applicationUrl": "https://localhost:7100;http://localhost:5200",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "JwtSettings__SecretKey": "loja-local-debug-signing-key-change-before-production-2026",
+        "RabbitMQ__Host": "localhost",
+        "RabbitMQ__Port": "5672",
+        "RabbitMQ__Username": "loja",
+        "RabbitMQ__Password": "loja_dev_password"
       }
     }
   }
