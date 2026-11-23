@@ -48,6 +48,7 @@ public class VendasRepository : IVendasRepository
             .Include(v => v.Produtos)
                 .ThenInclude(vp => vp.Produto)
                     .ThenInclude(p => p!.Imagens)
+            .Include(v => v.StatusHistorico)
             .Include(v => v.Produtos)
                 .ThenInclude(vp => vp.Produto)
                     .ThenInclude(p => p!.TagsProdutos)
@@ -67,6 +68,7 @@ public class VendasRepository : IVendasRepository
         if (venda == null) return null;
 
         venda.AtualizarStatus(status);
+        _vendasContext.VendasStatus.Add(new VendasStatus(venda.Id, venda.Status));
 
         await _vendasContext.SaveChangesAsync();
         return venda;
@@ -80,6 +82,7 @@ public class VendasRepository : IVendasRepository
             return null;
         }
 
+        _vendasContext.VendasStatus.Add(new VendasStatus(venda.Id, venda.Status));
         await _vendasContext.SaveChangesAsync();
         return venda;
     }

@@ -12,7 +12,8 @@
         "RabbitMQ__Host": "localhost",
         "RabbitMQ__Port": "5672",
         "RabbitMQ__Username": "loja",
-        "RabbitMQ__Password": "loja_dev_password"
+        "RabbitMQ__Password": "loja_dev_password",
+        "ConnectionStrings__DefaultConnection": "Server=localhost;Port=3306;Database=loja;Uid=loja;Pwd=loja_dev_password;"
       }
     },
     "https": {
@@ -26,7 +27,8 @@
         "RabbitMQ__Host": "localhost",
         "RabbitMQ__Port": "5672",
         "RabbitMQ__Username": "loja",
-        "RabbitMQ__Password": "loja_dev_password"
+        "RabbitMQ__Password": "loja_dev_password",
+        "ConnectionStrings__DefaultConnection": "Server=localhost;Port=3306;Database=loja;Uid=loja;Pwd=loja_dev_password;"
       }
     }
   }

@@ -131,7 +131,7 @@ public class VendasController : ControllerBase
         }
         else
         {
-            foreach(VendasProdutosInsertDTO vendaProduto in vendasProdutosDTOs)
+            foreach (VendasProdutosInsertDTO vendaProduto in vendasProdutosDTOs)
             {
                 await _vendasProdutosService.Add(novoId, vendaProduto);
             }

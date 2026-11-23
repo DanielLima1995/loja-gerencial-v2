@@ -4,7 +4,11 @@ using Loja.Domain.Entities;
 using Loja.Domain.Interfaces;
 using Loja.Infrastructure.Context;
 using Loja.Infrastructure.Repositories;
+using Loja.Infrastructure.Services;
 using Loja.API.Messaging;
+using Amazon.S3;
+using Amazon;
+using Amazon.Runtime;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +88,29 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ==========================================
+// AWS S3 Configuration
+// ==========================================
+var storageSettings = builder.Configuration.GetSection("StorageSettings:S3");
+var regionName = builder.Configuration["StorageSettings:Region"]
+    ?? storageSettings["RegionEndpoint"]
+    ?? "us-east-1";
+var region = RegionEndpoint.GetBySystemName(regionName);
+var awsAccessKeyId = builder.Configuration["AWS:AccessKeyId"];
+var awsSecretAccessKey = builder.Configuration["AWS:SecretAccessKey"];
+
+if (string.IsNullOrWhiteSpace(awsAccessKeyId) != string.IsNullOrWhiteSpace(awsSecretAccessKey))
+{
+    throw new InvalidOperationException(
+        "Configure AWS:AccessKeyId e AWS:SecretAccessKey juntos, ou use a cadeia padrão de credenciais da AWS.");
+}
+
+builder.Services.AddSingleton<IAmazonS3>(_ =>
+    string.IsNullOrWhiteSpace(awsAccessKeyId)
+        ? new AmazonS3Client(region)
+        : new AmazonS3Client(new BasicAWSCredentials(awsAccessKeyId, awsSecretAccessKey), region));
+
+builder.Services.AddScoped<IStorageProvider, S3StorageProvider>();
 
 builder.Services.AddScoped<IProdutoRepository, ProdutoRepository>();
 builder.Services.AddScoped<IProdutoImagensRepository, ProdutoImagensRepository>();
@@ -115,6 +142,9 @@ builder.Services.AddHostedService<VendasStatusConsumer>();
 
 builder.Services.AddScoped<IVendasProdutosRepository, VendasProdutosRepository>();
 builder.Services.AddScoped<IVendasProdutosService, VendasProdutosService>();
+
+builder.Services.AddScoped<IVendasStatusRepository, VendasStatusRepository>();
+builder.Services.AddScoped<IVendasStatusService, VendasStatusService>();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {

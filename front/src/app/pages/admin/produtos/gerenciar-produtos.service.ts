@@ -4,6 +4,11 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { Produto, ProdutoBody } from '../../../app.interface';
 
+export interface ProdutoCriadoResponse {
+  id: number;
+  mensagem: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -15,8 +20,16 @@ export class GerenciarProdutosService {
     private http: HttpClient
   ) {}
 
-  cadastrarProduto(dados: ProdutoBody) : Observable<unknown>{
-    return this.http.post(`${this.apiUrl}/Produtos`, dados);
+  cadastrarProduto(dados: Omit<ProdutoBody, 'imagens'>): Observable<ProdutoCriadoResponse> {
+    return this.http.post<ProdutoCriadoResponse>(`${this.apiUrl}/Produtos`, dados);
+  }
+
+  uploadImagem(produtoId: number, arquivo: File, referencia: number): Observable<unknown> {
+    const formData = new FormData();
+    formData.append('file', arquivo);
+    formData.append('referencia', String(referencia));
+
+    return this.http.post(`${this.apiUrl}/Produtos/${produtoId}/imagens`, formData);
   }
 
   getProduto(id: number) : Observable<Produto>{

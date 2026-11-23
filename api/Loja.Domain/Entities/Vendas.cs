@@ -30,6 +30,7 @@ public sealed class Vendas : Entity
         FormaPagamento = string.IsNullOrWhiteSpace(formaPagamento) ? "Pix" : formaPagamento;
         ValorFinal = valorFinal;
         DataCompra = dataCompra == default ? DateTime.UtcNow : dataCompra;
+        AdicionarStatus(Status);
     }
 
     public string Status { get; private set; } = StatusInicial;
@@ -44,7 +45,7 @@ public sealed class Vendas : Entity
     public decimal ValorFinal { get; private set; }
 
     public ICollection<VendasProdutos> Produtos { get; private set; } = new List<VendasProdutos>();
-
+    public ICollection<VendasStatus> StatusHistorico { get; private set; } = new List<VendasStatus>();
     public void AtualizarStatus(string novoStatus)
     {
         DomainExceptionValidation.When(string.IsNullOrWhiteSpace(novoStatus), "O status é obrigatório.");
@@ -64,21 +65,21 @@ public sealed class Vendas : Entity
             return false;
         }
 
-        Status = StatusEtapas[statusAtualIndex + 1];
+        AtualizarStatus(StatusEtapas[statusAtualIndex + 1]);
         return true;
     }
-
-
-
-
-
-
 
   public void AdicionarProduto(int produtoId, int quantidade, decimal valorUnitario, string tamanho, string genero, string cor)
     {
         var item = new VendasProdutos(this.Id, produtoId, quantidade, valorUnitario, tamanho, genero, cor);
  
         Produtos.Add(item);
+    }
+
+    public void AdicionarStatus(string status)
+    {
+        var novoStatus = new VendasStatus(this, status);
+        StatusHistorico.Add(novoStatus);
     }
 }
 

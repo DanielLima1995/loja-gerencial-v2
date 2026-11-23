@@ -5,13 +5,14 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ProductListService } from '../../product-list/product-list.service';
 import { QuillModule } from 'ngx-quill';
 import { ProductPreviewComponent } from './product-preview/product-preview.component';
-import Swal from 'sweetalert2';
 import { GerenciarProdutosService } from './gerenciar-produtos.service';
 import { Router } from '@angular/router';
 import { mapTagsGroups, TagsGrupo, TagsWithKeys, PreviewData, ProdutoBody, Tag } from '../../../app.interface';
 import { globalModules } from '../../../globalModules';
 import { GlobalFunctions } from '../../../services/global.service';
 import { MaskMoneyDirective } from '../../../shared/mask-money.directive';
+import { from, Observable, of } from 'rxjs';
+import { catchError, concatMap, map, toArray } from 'rxjs/operators';
 
 
 @Component({
@@ -42,6 +43,8 @@ tags!: TagsWithKeys;
 
 collapses: { [key: string]: boolean } = {};
 previewImages: string[] = []; // Armazena as URLs das imagens para pré-visualização
+private arquivosImagens: File[] = [];
+private leiturasImagensPendentes = 0;
 public Editor: any;
 editorContent: string = '<p>Bem-vindo ao Quill.js integrado ao Angular!</p>';
 formulario: FormGroup;
@@ -99,25 +102,71 @@ gerenciaCollapse(indice: string) {
 onFileSelected(event: Event): void {
   const input = event.target as HTMLInputElement;
 
+  if (this.carregando) {
+    input.value = '';
+    return;
+  }
+
   if (input?.files) {
     const files = Array.from(input.files); // Converte FileList em array
+    const tiposPermitidos = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const arquivosInvalidos: string[] = [];
 
     files.forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          this.previewImages.push(result);
-          this.dadosPreview = this.convertConteudoJson();
-        };
-        reader.readAsDataURL(file); // Lê o arquivo e cria a URL para pré-visualização
+      const motivos: string[] = [];
+      if (!tiposPermitidos.has(file.type)) {
+        motivos.push('formato não permitido');
       }
+      if (file.size === 0) {
+        motivos.push('arquivo vazio');
+      } else if (file.size > 5 * 1024 * 1024) {
+        motivos.push('maior que 5 MB');
+      }
+
+      if (motivos.length > 0) {
+        arquivosInvalidos.push(`${file.name} (${motivos.join(', ')})`);
+        return;
+      }
+
+      const reader = new FileReader();
+      this.leiturasImagensPendentes++;
+      reader.onload = (e) => {
+        const result = e.target?.result;
+        if (typeof result === 'string') {
+          this.previewImages.push(result);
+          this.arquivosImagens.push(file);
+          this.dadosPreview = this.convertConteudoJson();
+        } else {
+          this.globalFunctions.alerta('Erro ao carregar imagem', `Não foi possível carregar ${file.name}.`, 'error');
+        }
+        this.leiturasImagensPendentes--;
+      };
+      reader.onerror = () => {
+        this.leiturasImagensPendentes--;
+        this.globalFunctions.alerta('Erro ao carregar imagem', `Não foi possível carregar ${file.name}.`, 'error');
+      };
+      reader.readAsDataURL(file); // Lê o arquivo e cria a URL para pré-visualização
     });
+
+    if (arquivosInvalidos.length > 0) {
+      this.globalFunctions.alerta(
+        'Imagens não adicionadas',
+        `Use JPEG, PNG ou WebP com até 5 MB por arquivo. Arquivos recusados: ${arquivosInvalidos.join('; ')}.`,
+        'warning'
+      );
+    }
+
+    // Permite selecionar novamente o mesmo arquivo após removê-lo ou corrigir uma seleção inválida.
+    input.value = '';
   }
 }
 
 removeImage(index: number): void {
   this.previewImages.splice(index, 1); // Remove a imagem selecionada
+  this.arquivosImagens.splice(index, 1);
+  if (this.showPreview) {
+    this.dadosPreview = this.convertConteudoJson();
+  }
 }
 
 alterarImagemPrincipal(fromIndex: number): string[] {
@@ -127,12 +176,18 @@ alterarImagemPrincipal(fromIndex: number): string[] {
 
   const item = this.previewImages.splice(fromIndex, 1)[0]; // Remove o item da posição inicial
   this.previewImages.splice(0, 0, item); // Insere o item na nova posição
+  const arquivo = this.arquivosImagens.splice(fromIndex, 1)[0];
+  this.arquivosImagens.splice(0, 0, arquivo);
+
+  if (this.showPreview) {
+    this.dadosPreview = this.convertConteudoJson();
+  }
 
   return this.previewImages;
 }
 
 onSubmit(): void {
-  if (this.carregando) return;
+  if (this.carregando || this.leiturasImagensPendentes > 0) return;
 
   if (this.formulario.valid) {
     const convertTags: Record<string, Tag[]> = {};
@@ -141,32 +196,57 @@ onSubmit(): void {
     });
 
     const value = this.formulario.getRawValue();
-    const body: ProdutoBody = {
+    const body: Omit<ProdutoBody, 'imagens'> = {
       titulo: value.titulo,
       descricaoBasica: value.descricao_basica,
       descricao: value.descricao,
       valor: this.parseValor(value.valor),
-      imagens: this.previewImages.map((imagemUrl, referencia) => ({ imagemUrl, referencia })),
       tagIds: Object.values(convertTags).flat().map((tag) => tag.id),
     };
 
     this.carregando = true;
-    this.gerenciarProdutosService.cadastrarProduto(body).subscribe(
-      () => {
-        this.globalFunctions.alerta('Produto Cadastrado', 'Produto cadastrado com sucesso', 'success');
+    this.gerenciarProdutosService.cadastrarProduto(body).pipe(
+      concatMap((produto) => this.enviarImagens(produto.id))
+    ).subscribe({
+      next: (referenciasFalhas) => {
+        if (referenciasFalhas.length === 0) {
+          this.globalFunctions.alerta('Produto Cadastrado', 'Produto e imagens cadastrados com sucesso.', 'success');
+        } else {
+          this.globalFunctions.alerta(
+            'Falha parcial no envio das imagens',
+            `O produto foi criado, mas houve falha nas referências ${referenciasFalhas.join(', ')}. As demais imagens foram enviadas.`,
+            'warning'
+          );
+        }
+
         setTimeout(() => {
           this.router.navigate(['/admin/produtos/cadastrados']);
         }, 2000);
       },
-      () => {
+      error: () => {
         this.carregando = false;
         this.globalFunctions.alerta('Erro ao Cadastro do Produto', 'Ocorreu uma falha interna ao tentar cadastrar o produto. Tente novamente.', 'error');
       }
-    );
+    });
   } else {
     this.formulario.markAllAsTouched();
     this.globalFunctions.alerta('Cadastro incompleto', this.pendenciasCadastro.join(' '), 'warning');
   }
+}
+
+private enviarImagens(produtoId: number): Observable<number[]> {
+  const arquivos = this.arquivosImagens.map((arquivo, referencia) => ({ arquivo, referencia }));
+
+  return from(arquivos).pipe(
+    concatMap(({ arquivo, referencia }) =>
+      this.gerenciarProdutosService.uploadImagem(produtoId, arquivo, referencia).pipe(
+        map(() => null as number | null),
+        catchError(() => of(referencia))
+      )
+    ),
+    toArray(),
+    map((resultados) => resultados.filter((referencia): referencia is number => referencia !== null))
+  );
 }
 
 private parseValor(value: string | number): number {
@@ -262,6 +342,10 @@ get pendenciasCadastro(): string[] {
     pendencias.push('Adicione pelo menos uma imagem.');
   }
 
+  if (this.leiturasImagensPendentes > 0) {
+    pendencias.push('Aguarde o carregamento das imagens selecionadas.');
+  }
+
   return pendencias;
 }
 
@@ -285,6 +369,8 @@ get formularioValido(): boolean {
     && this.descricaoTemConteudo()
     && this.validaTagsObrigatorias()
     && this.previewImages.length > 0
+    && this.previewImages.length === this.arquivosImagens.length
+    && this.leiturasImagensPendentes === 0
   );
 }
 

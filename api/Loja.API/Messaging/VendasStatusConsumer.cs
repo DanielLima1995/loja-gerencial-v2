@@ -10,15 +10,18 @@ public sealed class VendasStatusConsumer : BackgroundService
 {
     private readonly IConfiguration _configuration;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IVendasStatusQueue _vendasStatusQueue;
     private readonly ILogger<VendasStatusConsumer> _logger;
 
     public VendasStatusConsumer(
         IConfiguration configuration,
         IServiceScopeFactory scopeFactory,
+        IVendasStatusQueue vendasStatusQueue,
         ILogger<VendasStatusConsumer> logger)
     {
         _configuration = configuration;
         _scopeFactory = scopeFactory;
+        _vendasStatusQueue = vendasStatusQueue;
         _logger = logger;
     }
 
@@ -26,7 +29,11 @@ public sealed class VendasStatusConsumer : BackgroundService
     {
         var rabbitSettings = _configuration.GetSection("RabbitMQ");
         var queueName = rabbitSettings["Queue"] ?? throw new InvalidOperationException("RabbitMQ:Queue não foi configurada.");
-        var delay = TimeSpan.FromSeconds(rabbitSettings.GetValue<int>("DelaySeconds", 60));
+        var delaySeconds = rabbitSettings.GetValue<int>("DelaySeconds", 60);
+        if (delaySeconds <= 0)
+        {
+            throw new InvalidOperationException("RabbitMQ:DelaySeconds deve ser maior que zero.");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -73,23 +80,24 @@ public sealed class VendasStatusConsumer : BackgroundService
 
                     try
                     {
-                        await Task.Delay(delay, stoppingToken);
-
                         using var scope = _scopeFactory.CreateScope();
                         var vendasService = scope.ServiceProvider.GetRequiredService<IVendasService>();
                         var venda = await vendasService.AdvanceStatus(message.VendaId, message.ExpectedStatus);
 
                         if (venda is not null)
                         {
+                            _logger.LogInformation("Status da venda {VendaId} alterado de '{StatusAnterior}' para '{NovoStatus}' e registrado no histórico.", venda.Id, message.ExpectedStatus, venda.Status);
+
                             var statusIndex = Vendas.StatusEtapas.ToList().IndexOf(venda.Status);
                             if (statusIndex >= 0 && statusIndex < Vendas.StatusEtapas.Count - 1)
                             {
-                                var nextMessage = new VendaStatusMessage(venda.Id, venda.Status);
-                                var nextBody = JsonSerializer.SerializeToUtf8Bytes(nextMessage);
-                                var properties = channel.CreateBasicProperties();
-                                properties.Persistent = true;
-                                channel.BasicPublish(exchange: string.Empty, routingKey: queueName, mandatory: false, basicProperties: properties, body: nextBody);
+                                await _vendasStatusQueue.PublishAsync(venda.Id, venda.Status, stoppingToken);
+                                _logger.LogInformation("Próxima etapa da venda {VendaId} agendada para {DelaySeconds} segundos.", venda.Id, delaySeconds);
                             }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Mensagem da venda {VendaId} ignorada: a venda não existe ou o status atual não corresponde a '{StatusEsperado}'.", message.VendaId, message.ExpectedStatus);
                         }
 
                         channel.BasicAck(eventArgs.DeliveryTag, multiple: false);
@@ -111,8 +119,8 @@ public sealed class VendasStatusConsumer : BackgroundService
                     }
                 };
 
-                channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
-                _logger.LogInformation("Consumidor RabbitMQ ativo para a fila {Queue}.", queueName);
+                channel.BasicConsume(queue: queueName, autoAck: false, exclusive: true, consumer: consumer);
+                _logger.LogInformation("Consumidor RabbitMQ exclusivo ativo para a fila {Queue}.", queueName);
 
                 await Task.WhenAny(connectionClosed.Task, Task.Delay(Timeout.Infinite, stoppingToken));
                 if (!stoppingToken.IsCancellationRequested)
@@ -126,7 +134,7 @@ public sealed class VendasStatusConsumer : BackgroundService
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Não foi possível conectar ao RabbitMQ; nova tentativa em 5 segundos.");
+                _logger.LogError(exception, "Não foi possível conectar ou registrar o consumidor exclusivo no RabbitMQ; nova tentativa em 5 segundos.");
                 try
                 {
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);

@@ -1,3 +1,12 @@
+FROM node:22-alpine AS development
+WORKDIR /app
+COPY package*.json ./
+COPY . .
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint && chmod +x /usr/local/bin/docker-entrypoint
+EXPOSE 4200
+ENTRYPOINT ["docker-entrypoint"]
+
 FROM node:22-alpine AS build
 WORKDIR /app
 

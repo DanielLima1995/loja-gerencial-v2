@@ -1,30 +1,121 @@
-services:
+﻿services:
+  mysql:
+    image: mysql:8.4
+    container_name: loja-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-loja_dev_root_password}"
+      MYSQL_DATABASE: loja
+      MYSQL_USER: loja
+      MYSQL_PASSWORD: "${DB_PASSWORD:-loja_dev_password}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   api:
     build:
       context: ./api
       dockerfile: Loja.API/Dockerfile
+      target: development
     container_name: loja-api
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: "${DB_CONNECTION_STRING:-Server=host.docker.internal;Port=3306;Database=loja;Uid=root;Pwd=;}"
+      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=loja;Uid=loja;Pwd=${DB_PASSWORD:-loja_dev_password};"
       RabbitMQ__Host: host.docker.internal
       RabbitMQ__Port: 5672
       RabbitMQ__Username: loja
       RabbitMQ__Password: loja_dev_password
       JwtSettings__SecretKey: "${JWT_SECRET_KEY:-loja-docker-dev-signing-key-change-before-production-2026}"
       Cors__AllowedOrigins__0: http://localhost:4200
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+    volumes:
+      - ./api:/app/src
+      - type: bind
+        source: "${APPDATA}/Microsoft/UserSecrets/f6be3041-1bbf-49bb-870e-20b9ffb277ca/secrets.json"
+        target: /root/.microsoft/usersecrets/f6be3041-1bbf-49bb-870e-20b9ffb277ca/secrets.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: volume
+        source: api_loja_api_bin
+        target: /app/src/Loja.API/bin
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_api_obj
+        target: /app/src/Loja.API/obj
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_application_bin
+        target: /app/src/Loja.Application/bin
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_application_obj
+        target: /app/src/Loja.Application/obj
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_domain_bin
+        target: /app/src/Loja.Domain/bin
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_domain_obj
+        target: /app/src/Loja.Domain/obj
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_infrastructure_bin
+        target: /app/src/Loja.Infrastructure/bin
+        volume:
+          nocopy: true
+      - type: volume
+        source: api_loja_infrastructure_obj
+        target: /app/src/Loja.Infrastructure/obj
+        volume:
+          nocopy: true
     ports:
       - "5161:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   front:
     build:
       context: ./front
       dockerfile: Dockerfile
+      target: development
     container_name: loja-front
     restart: unless-stopped
     ports:
-      - "4200:80"
+      - "4200:4200"
+    volumes:
+      - ./front:/app
+      - front_node_modules:/app/node_modules
+      - front_npm_cache:/root/.npm
     depends_on:
       - api
+
+volumes:
+  mysql_data:
+  api_loja_api_bin:
+  api_loja_api_obj:
+  api_loja_application_bin:
+  api_loja_application_obj:
+  api_loja_domain_bin:
+  api_loja_domain_obj:
+  api_loja_infrastructure_bin:
+  api_loja_infrastructure_obj:
+  front_node_modules:
+  front_npm_cache:

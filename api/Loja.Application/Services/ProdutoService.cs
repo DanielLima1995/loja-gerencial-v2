@@ -68,13 +68,6 @@ public class ProdutoService : IProdutoService
             produtoDto.UsuarioId ?? string.Empty
         );
 
-        foreach (var img in produtoDto.Imagens
-                     .GroupBy(imagem => imagem.ImagemUrl, StringComparer.Ordinal)
-                     .Select(grupo => grupo.First()))
-        {
-            produto.AdicionarImagem(img.ImagemUrl, img.Referencia);
-        }
-
         foreach (var tagId in produtoDto.TagIds.Distinct())
             produto.AdicionarTagProduto(tagId);
 

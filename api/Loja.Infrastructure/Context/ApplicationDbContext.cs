@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Vendas> Vendas { get; set; }
     public DbSet<VendasProdutos> VendasProdutos { get; set; }
     public DbSet<VendasProdutosTags> VendasProdutosTags { get; set; }
+    public DbSet<VendasStatus> VendasStatus { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -150,6 +151,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             b.HasMany(v => v.Produtos)
                 .WithOne(vp => vp.Venda)
                 .HasForeignKey(vp => vp.VendaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            b.HasMany(v => v.StatusHistorico)
+                .WithOne(status => status.Venda)
+                .HasForeignKey(status => status.VendaId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

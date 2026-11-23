@@ -76,7 +76,7 @@ public class ProdutosController : ControllerBase
         if (novoId <= 0 || produtoDto is null)
         {
             return BadRequest(new { mensagem = "Erro ao adicionar o produto." });
-        }
+        }//
 
         return Ok(new
         {
@@ -99,5 +99,40 @@ public class ProdutosController : ControllerBase
     {
         await _produtoService.Remove(id);
         return Ok(new { mensagem = "Produto removido com sucesso!" });
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{produtoId:int}/imagens")]
+    public async Task<IActionResult> UploadImagem(int produtoId, IFormFile file, [FromForm] int referencia)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { mensagem = "Arquivo não fornecido." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType))
+            return BadRequest(new { mensagem = "Tipo de arquivo inválido. Permitidos: JPEG, PNG, WebP" });
+
+        const long maxFileSize = 5 * 1024 * 1024; // 5MB
+        if (file.Length > maxFileSize)
+            return BadRequest(new { mensagem = "Arquivo muito grande. Máximo 5MB." });
+
+        try
+        {
+            using (var stream = file.OpenReadStream())
+            {
+                var imagemId = await _produtoImagensService.AddFromStreamAsync(
+                    produtoId, 
+                    stream, 
+                    file.FileName, 
+                    file.ContentType, 
+                    referencia
+                );
+                return Ok(new { id = imagemId, mensagem = "Imagem enviada com sucesso!" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { mensagem = $"Erro ao enviar imagem: {ex.Message}" });
+        }
     }
 }

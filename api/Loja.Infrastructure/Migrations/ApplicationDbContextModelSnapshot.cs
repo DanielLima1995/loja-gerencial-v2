@@ -464,6 +464,31 @@ namespace Loja.Infrastructure.Migrations
                     b.ToTable("VendasProdutosTags");
                 });
 
+            modelBuilder.Entity("Loja.Domain.Entities.VendasStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DataAtualizacao")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("VendaId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VendaId");
+
+                    b.ToTable("VendasStatus");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -769,6 +794,17 @@ namespace Loja.Infrastructure.Migrations
                     b.Navigation("VendaProduto");
                 });
 
+            modelBuilder.Entity("Loja.Domain.Entities.VendasStatus", b =>
+                {
+                    b.HasOne("Loja.Domain.Entities.Vendas", "Venda")
+                        .WithMany("StatusHistorico")
+                        .HasForeignKey("VendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Venda");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -840,6 +876,8 @@ namespace Loja.Infrastructure.Migrations
             modelBuilder.Entity("Loja.Domain.Entities.Vendas", b =>
                 {
                     b.Navigation("Produtos");
+
+                    b.Navigation("StatusHistorico");
                 });
 
             modelBuilder.Entity("Loja.Domain.Entities.VendasProdutos", b =>

@@ -65,6 +65,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "docker": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.docker.development.ts"
+                }
+              ],
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
@@ -82,6 +93,9 @@
             },
             "development": {
               "buildTarget": "loja:build:development"
+            },
+            "docker": {
+              "buildTarget": "loja:build:docker"
             }
           },
           "defaultConfiguration": "development"
